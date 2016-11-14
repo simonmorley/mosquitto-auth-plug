@@ -45,6 +45,7 @@ struct mysql_backend {
 	char *dbname;
 	char *user;
 	char *pass;
+	char *socket;
         bool auto_connect;
         char *userquery;        // MUST return 1 row, 1 column
         char *superquery;       // MUST return 1 row, 1 column, [0, 1]
@@ -65,7 +66,7 @@ static char *get_bool(char *option, char *defval)
 void *be_mysql_init()
 {
 	struct mysql_backend *conf;
-	char *host, *user, *pass, *dbname, *p;
+	char *host, *user, *pass, *dbname, *p, *socket;
 	char *userquery;
     char *opt_flag;
 	int port;
@@ -78,10 +79,10 @@ void *be_mysql_init()
 	user		= p_stab("user");
 	pass		= p_stab("pass");
 	dbname		= p_stab("dbname");
-
         socket		= p_stab("socket");
 
-	host = (host) ? host : strdup("localhost");
+	host = (host) ? (socket) ? NULL : host : strdup("localhost");
+	socket = (socket) ? socket : NULL;
 	port = (!p) ? 3306 : atoi(p);
 
 	userquery = p_stab("userquery");
@@ -99,7 +100,8 @@ void *be_mysql_init()
 	conf->port		= port;
 	conf->user		= user;
 	conf->pass		= pass;
-    conf->auto_connect  = false;
+        conf->socket            = socket;
+        conf->auto_connect  = false;
 	conf->dbname		= dbname;
 	conf->userquery		= userquery;
 	conf->superquery	= p_stab("superquery");
@@ -116,7 +118,7 @@ void *be_mysql_init()
         mysql_options(conf->mysql, MYSQL_OPT_RECONNECT, &reconnect);
     }
 
-	if (!mysql_real_connect(conf->mysql, host, user, pass, dbname, port, NULL, 0)) {
+	if (!mysql_real_connect(conf->mysql, host, user, pass, dbname, port, socket, 0)) {
 		fprintf(stderr, "%s\n", mysql_error(conf->mysql));
         if (!conf->auto_connect && !reconnect) {
             free(conf);
